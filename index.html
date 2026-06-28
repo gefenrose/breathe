@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Breathe</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#5ec3be">
+
+  <!-- iOS home screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Breathe">
+  <link rel="apple-touch-icon" href="icon-180.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <style>
+    *, *::before, *::after {
+      margin: 0; padding: 0; box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+    }
+
+    body {
+      background: #eef6f6;
+      background: radial-gradient(ellipse at 50% 35%, #dff2f1 0%, #eef6f6 65%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      min-height: 100vh;
+      overflow: hidden;
+      color: #3d9090;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      padding: 40px 24px;
+    }
+
+    /* ─── Header ─── */
+    .header {
+      font-size: 16px;
+      font-weight: 300;
+      letter-spacing: 11px;
+      text-transform: uppercase;
+      color: #5ec3be;
+      padding-left: 11px; /* optical offset for letter-spacing */
+    }
+
+    /* ─── Visualisation ─── */
+    .vis {
+      position: relative;
+      width: 288px;
+      height: 288px;
+    }
+
+    .ring-svg {
+      position: absolute;
+      inset: 0;
+      transform: rotate(-90deg);
+      pointer-events: none;
+    }
+
+    .ring-bg {
+      fill: none;
+      stroke: #cce8e7;
+      stroke-width: 2;
+    }
+
+    .ring-fill {
+      fill: none;
+      stroke: #5ec3be;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    .ring-fill.visible {
+      opacity: 1;
+    }
+
+    .flower-area {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .flower {
+      position: relative;
+      width: 110px;
+      height: 110px;
+    }
+
+    .petal {
+      position: absolute;
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      background: rgba(94, 196, 192, 0.50);
+      top: 50%;
+      left: 50%;
+      margin: -33px 0 0 -33px;
+      will-change: transform;
+    }
+
+    .core {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(100, 212, 208, 0.90);
+      top: 50%;
+      left: 50%;
+      margin: -24px 0 0 -24px;
+      pointer-events: none;
+      will-change: transform;
+    }
+
+    /* ─── Phase label ─── */
+    .phase {
+      font-size: 20px;
+      font-weight: 300;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      color: #3d9090;
+      min-height: 27px;
+      text-align: center;
+      padding-left: 6px;
+      opacity: 1;
+      transition: opacity 0.4s ease;
+    }
+
+    .phase.fade {
+      opacity: 0;
+    }
+
+    /* ─── Info line ─── */
+    .info {
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: #9fcece;
+      min-height: 17px;
+      text-align: center;
+    }
+
+    /* ─── Controls ─── */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .durations {
+      display: flex;
+      gap: 8px;
+      transition: opacity 0.3s ease;
+    }
+
+    .durations.locked {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .dur {
+      font-family: inherit;
+      font-size: 12px;
+      letter-spacing: 0.3px;
+      background: none;
+      border: 1px solid #c2e2e1;
+      color: #89c0bf;
+      padding: 7px 17px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      outline: none;
+    }
+
+    .dur:hover:not(.on) {
+      border-color: #5ec3be;
+      color: #5ec3be;
+    }
+
+    .dur.on {
+      background: #5ec3be;
+      border-color: #5ec3be;
+      color: #fff;
+    }
+
+    .action {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 300;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      background: none;
+      border: 1.5px solid #5ec3be;
+      color: #5ec3be;
+      padding: 12px 46px 12px 52px; /* offset for letter-spacing */
+      border-radius: 50px;
+      cursor: pointer;
+      transition: background 0.25s, color 0.25s, transform 0.1s;
+      outline: none;
+      min-width: 164px;
+    }
+
+    .action:hover {
+      background: #5ec3be;
+      color: #fff;
+    }
+
+    .action:active {
+      transform: scale(0.96);
+    }
+
+    /* ─── Idle pulse ─── */
+    @keyframes idlePulse {
+      0%, 100% { transform: scale(0.78); }
+      50%       { transform: scale(0.88); }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">Breathe</div>
+
+  <div class="vis">
+    <svg class="ring-svg" width="288" height="288">
+      <circle class="ring-bg"   cx="144" cy="144" r="131"/>
+      <circle class="ring-fill" cx="144" cy="144" r="131" id="ring"/>
+    </svg>
+    <div class="flower-area">
+      <div class="flower" id="flower">
+        <div class="petal" id="p0"></div>
+        <div class="petal" id="p1"></div>
+        <div class="petal" id="p2"></div>
+        <div class="petal" id="p3"></div>
+        <div class="petal" id="p4"></div>
+        <div class="petal" id="p5"></div>
+        <div class="core"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="phase" id="phase">&nbsp;</div>
+  <div class="info"  id="info">7 breaths &middot; 1.5 min</div>
+
+  <div class="controls">
+    <div class="durations" id="durs">
+      <button class="dur"    data-n="5"  data-lbl="1 min">1 min</button>
+      <button class="dur on" data-n="7"  data-lbl="1.5 min">1.5 min</button>
+      <button class="dur"    data-n="10" data-lbl="2 min">2 min</button>
+    </div>
+    <button class="action" id="action">Begin</button>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  /* ── Constants ── */
+  const N       = 6;       // petals
+  const SPREAD  = 48;      // px offset when expanded
+  const INHALE  = 4000;    // ms
+  const EXHALE  = 4000;    // ms
+  const HOLD    = 750;     // ms pause between phases
+  const R       = 131;     // ring radius (must match SVG)
+  const C       = 2 * Math.PI * R;
+
+  /* ── Elements ── */
+  const flowerEl = document.getElementById('flower');
+  const petals   = [...Array(N)].map((_, i) => document.getElementById('p' + i));
+  const phaseEl  = document.getElementById('phase');
+  const infoEl   = document.getElementById('info');
+  const actionBtn = document.getElementById('action');
+  const ringEl   = document.getElementById('ring');
+  const dursEl   = document.getElementById('durs');
+  const durBtns  = [...document.querySelectorAll('.dur')];
+
+  /* ── State ── */
+  let totalBreaths = 7;
+  let isRunning    = false;
+  let stopped      = false;
+  let wakeUp       = null;  // resolves current sleep early
+  let rafId        = null;
+
+  /* ── Ring setup ── */
+  ringEl.style.strokeDasharray  = C;
+  ringEl.style.strokeDashoffset = C;
+
+  /* ── Petal vectors (top → clockwise) ── */
+  const vecs = petals.map((_, i) => {
+    const a = (i * 60 - 90) * Math.PI / 180;
+    return [Math.cos(a) * SPREAD, Math.sin(a) * SPREAD];
+  });
+
+  /* ── Helpers ── */
+
+  function sleep(ms) {
+    return new Promise(resolve => {
+      const id = setTimeout(() => { wakeUp = null; resolve(); }, ms);
+      wakeUp = () => { clearTimeout(id); wakeUp = null; resolve(); };
+    });
+  }
+
+  function interrupt() {
+    stopped = true;
+    if (wakeUp) wakeUp();
+  }
+
+  function setPhase(txt) {
+    phaseEl.classList.add('fade');
+    setTimeout(() => {
+      phaseEl.textContent = txt || ' ';
+      phaseEl.classList.remove('fade');
+    }, 200);
+  }
+
+  function initPetals() {
+    petals.forEach(p => {
+      p.style.transition = 'none';
+      p.style.transform  = 'translate(0,0)';
+    });
+    flowerEl.style.transition = 'none';
+    flowerEl.style.transform  = 'scale(0.78)';
+  }
+
+  function setExpanded(expand, ms) {
+    const ease = 'cubic-bezier(0.45, 0.05, 0.55, 0.95)';
+    flowerEl.style.transition = `transform ${ms}ms ${ease}`;
+    flowerEl.style.transform  = `scale(${expand ? 1.42 : 0.78})`;
+    petals.forEach((p, i) => {
+      p.style.transition = `transform ${ms}ms ${ease}`;
+      p.style.transform  = expand
+        ? `translate(${vecs[i][0]}px,${vecs[i][1]}px)`
+        : 'translate(0,0)';
+    });
+  }
+
+  function startRing(totalMs) {
+    const t0 = performance.now();
+    ringEl.classList.add('visible');
+    const tick = (now) => {
+      if (!isRunning) return;
+      const p = Math.min((now - t0) / totalMs, 1);
+      ringEl.style.strokeDashoffset = C * (1 - p);
+      if (p < 1) rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function stopRing() {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    ringEl.classList.remove('visible');
+    ringEl.style.strokeDashoffset = C;
+  }
+
+  function startIdle() {
+    flowerEl.style.transition = 'none';
+    flowerEl.style.transform  = '';
+    flowerEl.style.animation  = 'idlePulse 3.2s ease-in-out infinite';
+  }
+
+  function stopIdle() {
+    flowerEl.style.animation = 'none';
+  }
+
+  function activeLabel() {
+    return (durBtns.find(b => b.classList.contains('on')) || {}).dataset?.lbl ?? '';
+  }
+
+  /* ── Haptic feedback (Vibration API — Android/Chrome; no-op elsewhere) ── */
+  const canVibrate = 'vibrate' in navigator;
+  function haptic(pattern) {
+    if (canVibrate) navigator.vibrate(pattern);
+  }
+
+  function resetUI() {
+    actionBtn.textContent = 'Begin';
+    dursEl.classList.remove('locked');
+    infoEl.textContent = `${totalBreaths} breaths · ${activeLabel()}`;
+    setPhase('');
+    stopRing();
+  }
+
+  /* ── Main session loop ── */
+  async function runSession() {
+    stopIdle();
+    initPetals();
+    await sleep(200);  // let inline style settle before transition
+
+    const cycleMs = INHALE + HOLD + EXHALE + HOLD;
+    startRing(totalBreaths * cycleMs);
+
+    for (let i = 0; i < totalBreaths; i++) {
+      if (stopped) break;
+
+      const left = totalBreaths - i;
+      infoEl.textContent = `${left} breath${left !== 1 ? 's' : ''} remaining`;
+
+      // Inhale
+      haptic(20);
+      setPhase('Inhale');
+      setExpanded(true, INHALE);
+      await sleep(INHALE);
+      if (stopped) break;
+
+      // Hold
+      haptic([15, 60, 15]);
+      setPhase('Hold');
+      await sleep(HOLD);
+      if (stopped) break;
+
+      // Exhale
+      haptic(20);
+      setPhase('Exhale');
+      setExpanded(false, EXHALE);
+      await sleep(EXHALE);
+      if (stopped) break;
+
+      // Rest
+      setPhase('');
+      await sleep(HOLD);
+    }
+
+    stopRing();
+
+    if (!stopped) {
+      // Completion
+      haptic([30, 80, 30, 80, 60]);
+      setPhase('Complete');
+      infoEl.textContent = 'Session complete';
+      // Fill ring briefly to show 100%
+      ringEl.classList.add('visible');
+      ringEl.style.strokeDashoffset = 0;
+      await sleep(2400);
+      ringEl.classList.remove('visible');
+    }
+
+    // Clean up
+    isRunning = false;
+    stopped   = false;
+    resetUI();
+
+    // Smooth collapse then resume idle
+    setExpanded(false, 900);
+    await sleep(900);
+    startIdle();
+  }
+
+  /* ── Button handlers ── */
+
+  actionBtn.addEventListener('click', () => {
+    if (isRunning) {
+      interrupt();
+      isRunning = false;
+      resetUI();
+    } else {
+      isRunning = true;
+      stopped   = false;
+      actionBtn.textContent = 'Stop';
+      dursEl.classList.add('locked');
+      runSession();
+    }
+  });
+
+  durBtns.forEach(b => b.addEventListener('click', () => {
+    durBtns.forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    totalBreaths = parseInt(b.dataset.n, 10);
+    infoEl.textContent = `${totalBreaths} breaths · ${b.dataset.lbl}`;
+  }));
+
+  /* ── Init ── */
+  ringEl.style.strokeDashoffset = C;
+  startIdle();
+
+  /* ── Service worker ── */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+
+})();
+</script>
+</body>
+</html>

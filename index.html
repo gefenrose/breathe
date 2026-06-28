@@ -4,6 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Breathe</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#5ec3be">
+
+  <!-- iOS home screen -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Breathe">
+  <link rel="apple-touch-icon" href="icon-180.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
   <style>
     *, *::before, *::after {
       margin: 0; padding: 0; box-sizing: border-box;
@@ -476,6 +489,11 @@
   /* ── Init ── */
   ringEl.style.strokeDashoffset = C;
   startIdle();
+
+  /* ── Service worker ── */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
 
 })();
 </script>

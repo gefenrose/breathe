@@ -371,6 +371,12 @@
     return (durBtns.find(b => b.classList.contains('on')) || {}).dataset?.lbl ?? '';
   }
 
+  /* ── Haptic feedback (Vibration API — Android/Chrome; no-op elsewhere) ── */
+  const canVibrate = 'vibrate' in navigator;
+  function haptic(pattern) {
+    if (canVibrate) navigator.vibrate(pattern);
+  }
+
   function resetUI() {
     actionBtn.textContent = 'Begin';
     dursEl.classList.remove('locked');
@@ -395,17 +401,20 @@
       infoEl.textContent = `${left} breath${left !== 1 ? 's' : ''} remaining`;
 
       // Inhale
+      haptic(20);
       setPhase('Inhale');
       setExpanded(true, INHALE);
       await sleep(INHALE);
       if (stopped) break;
 
       // Hold
+      haptic([15, 60, 15]);
       setPhase('Hold');
       await sleep(HOLD);
       if (stopped) break;
 
       // Exhale
+      haptic(20);
       setPhase('Exhale');
       setExpanded(false, EXHALE);
       await sleep(EXHALE);
@@ -420,6 +429,7 @@
 
     if (!stopped) {
       // Completion
+      haptic([30, 80, 30, 80, 60]);
       setPhase('Complete');
       infoEl.textContent = 'Session complete';
       // Fill ring briefly to show 100%

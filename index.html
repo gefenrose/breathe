@@ -654,8 +654,14 @@
   updateInfo();
   startIdle();
 
-  /* ── Service worker ── */
+  /* ── Service worker — auto-update ── */
   if ('serviceWorker' in navigator) {
+    // When a new SW takes control (after skipWaiting), reload to get
+    // fresh HTML. Guard against reload loops with a one-shot flag.
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!reloading) { reloading = true; location.reload(); }
+    });
     navigator.serviceWorker.register('./sw.js');
   }
 

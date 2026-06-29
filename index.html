@@ -42,8 +42,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 22px;
-      padding: 40px 24px;
+      gap: 18px;
+      padding: 32px 24px;
     }
 
     /* ─── Header ─── */
@@ -174,20 +174,66 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
+      width: 100%;
     }
 
-    .durations {
+    /* Shared pill-row style */
+    .pill-row {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       transition: opacity 0.3s ease;
     }
 
-    .durations.locked {
+    .pill-row.locked {
       opacity: 0.35;
       pointer-events: none;
     }
 
+    /* Exercise type pills */
+    .exer {
+      font-family: inherit;
+      font-size: 12px;
+      background: none;
+      border: 1px solid #c2e2e1;
+      color: #89c0bf;
+      padding: 7px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      outline: none;
+      white-space: nowrap;
+    }
+
+    .exer:hover:not(.on) {
+      border-color: #5ec3be;
+      color: #5ec3be;
+    }
+
+    .exer.on {
+      background: #5ec3be;
+      border-color: #5ec3be;
+      color: #fff;
+    }
+
+    /* Exercise description */
+    .exer-desc {
+      font-size: 11px;
+      color: #b0d8d8;
+      min-height: 16px;
+      text-align: center;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Divider */
+    .sep {
+      width: 200px;
+      height: 1px;
+      background: #ddf0ef;
+      margin: 2px 0;
+    }
+
+    /* Breath-count pills */
     .dur {
       font-family: inherit;
       font-size: 12px;
@@ -226,6 +272,7 @@
       transition: background 0.25s, color 0.25s, transform 0.1s;
       outline: none;
       min-width: 160px;
+      margin-top: 4px;
     }
 
     .action:hover {
@@ -269,14 +316,28 @@
 
   <div class="phase"     id="phase">&nbsp;</div>
   <div class="grounding" id="grounding"></div>
-  <div class="info"      id="info">7 נשימות · דקה וחצי</div>
+  <div class="info"      id="info"></div>
 
   <div class="controls">
-    <div class="durations" id="durs">
-      <button class="dur"    data-n="5"  data-lbl="דקה">דקה</button>
-      <button class="dur on" data-n="7"  data-lbl="דקה וחצי">דקה וחצי</button>
-      <button class="dur"    data-n="10" data-lbl="שתי דקות">שתי דקות</button>
+
+    <!-- Exercise type -->
+    <div class="pill-row" id="exers">
+      <button class="exer on" data-id="balanced">מאוזנת</button>
+      <button class="exer"    data-id="box">קופסה</button>
+      <button class="exer"    data-id="478">4-7-8</button>
+      <button class="exer"    data-id="calm">רגועה</button>
     </div>
+    <div class="exer-desc" id="exerDesc"></div>
+
+    <div class="sep"></div>
+
+    <!-- Breath count -->
+    <div class="pill-row" id="durs">
+      <button class="dur"    data-n="5">5 נשימות</button>
+      <button class="dur on" data-n="7">7 נשימות</button>
+      <button class="dur"    data-n="10">10 נשימות</button>
+    </div>
+
     <button class="action" id="action">התחל</button>
   </div>
 
@@ -284,14 +345,31 @@
 
 <script>
 (() => {
-  /* ── Constants ── */
-  const N      = 6;
-  const SPREAD = 48;
-  const INHALE = 4000;
-  const EXHALE = 4000;
-  const HOLD   = 750;
-  const R      = 131;
-  const C      = 2 * Math.PI * R;
+  /* ── Exercise definitions ── */
+  const EXERCISES = {
+    balanced: {
+      name: 'מאוזנת',
+      desc: 'נשימה בסיסית ומרגיעה · 4 · 4 שנ׳',
+      inhale: 4000, hold1: 750, exhale: 4000, hold2: 750,
+    },
+    box: {
+      name: 'קופסה',
+      desc: 'להפגת לחץ וחרדה · 4 · 4 · 4 · 4 שנ׳',
+      inhale: 4000, hold1: 4000, exhale: 4000, hold2: 4000,
+    },
+    '478': {
+      name: '4-7-8',
+      desc: 'הרפיה עמוקה לפני שינה · 4 · 7 · 8 שנ׳',
+      inhale: 4000, hold1: 7000, exhale: 8000, hold2: 0,
+    },
+    calm: {
+      name: 'רגועה',
+      desc: 'איזון קצב לב · 5 · 5 שנ׳',
+      inhale: 5000, hold1: 0, exhale: 5000, hold2: 0,
+    },
+  };
+
+  const REST = 500; // ms between cycles (not included in ring timer)
 
   /* ── Grounding messages shown during exhale ── */
   const GROUNDING = [
@@ -304,23 +382,33 @@
     'תן למחשבות לעבור בשקט',
   ];
 
+  /* ── Constants ── */
+  const N      = 6;
+  const SPREAD = 48;
+  const R      = 131;
+  const C      = 2 * Math.PI * R;
+
   /* ── Elements ── */
   const flowerEl    = document.getElementById('flower');
   const petals      = [...Array(N)].map((_, i) => document.getElementById('p' + i));
   const phaseEl     = document.getElementById('phase');
   const groundingEl = document.getElementById('grounding');
   const infoEl      = document.getElementById('info');
+  const exerDescEl  = document.getElementById('exerDesc');
   const actionBtn   = document.getElementById('action');
   const ringEl      = document.getElementById('ring');
+  const exersEl     = document.getElementById('exers');
   const dursEl      = document.getElementById('durs');
+  const exerBtns    = [...document.querySelectorAll('.exer')];
   const durBtns     = [...document.querySelectorAll('.dur')];
 
   /* ── State ── */
-  let totalBreaths   = 7;
-  let isRunning      = false;
-  let stopped        = false;
-  let wakeUp         = null;
-  let rafId          = null;
+  let exercise     = EXERCISES.balanced;
+  let totalBreaths = 7;
+  let isRunning    = false;
+  let stopped      = false;
+  let wakeUp       = null;
+  let rafId        = null;
   let groundingTimer = null;
 
   /* ── Ring setup ── */
@@ -350,7 +438,7 @@
   function setPhase(txt) {
     phaseEl.classList.add('fade');
     setTimeout(() => {
-      phaseEl.textContent = txt || ' ';
+      phaseEl.textContent = txt || ' ';
       phaseEl.classList.remove('fade');
     }, 200);
   }
@@ -368,6 +456,21 @@
   function clearGrounding() {
     clearTimeout(groundingTimer);
     groundingEl.classList.remove('visible');
+  }
+
+  function fmtTime(ms) {
+    const s = Math.round(ms / 1000);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    if (m === 0) return `${s} שנ׳`;
+    if (sec === 0) return `${m} דק׳`;
+    return `${m}:${String(sec).padStart(2, '0')} דק׳`;
+  }
+
+  function updateInfo() {
+    const ex = exercise;
+    const total = (ex.inhale + ex.hold1 + ex.exhale + ex.hold2) * totalBreaths;
+    infoEl.textContent = `${totalBreaths} נשימות · ${fmtTime(total)}`;
   }
 
   function initPetals() {
@@ -419,20 +522,21 @@
     flowerEl.style.animation = 'none';
   }
 
-  function activeLabel() {
-    return (durBtns.find(b => b.classList.contains('on')) || {}).dataset?.lbl ?? '';
-  }
-
   /* ── Haptic feedback (Vibration API — Android/Chrome; no-op elsewhere) ── */
   const canVibrate = 'vibrate' in navigator;
   function haptic(pattern) {
     if (canVibrate) navigator.vibrate(pattern);
   }
 
+  function lockControls(lock) {
+    exersEl.classList.toggle('locked', lock);
+    dursEl.classList.toggle('locked', lock);
+  }
+
   function resetUI() {
     actionBtn.textContent = 'התחל';
-    dursEl.classList.remove('locked');
-    infoEl.textContent = `${totalBreaths} נשימות · ${activeLabel()}`;
+    lockControls(false);
+    updateInfo();
     setPhase('');
     clearGrounding();
     stopRing();
@@ -440,12 +544,13 @@
 
   /* ── Main session loop ── */
   async function runSession() {
+    const ex = exercise;
     stopIdle();
     initPetals();
     await sleep(200);
 
-    const cycleMs = INHALE + HOLD + EXHALE + HOLD;
-    startRing(totalBreaths * cycleMs);
+    const cycleMs = ex.inhale + ex.hold1 + ex.exhale + ex.hold2;
+    startRing(cycleMs * totalBreaths);
 
     for (let i = 0; i < totalBreaths; i++) {
       if (stopped) break;
@@ -456,28 +561,38 @@
       // Inhale
       haptic(20);
       setPhase('שאיפה');
-      setExpanded(true, INHALE);
-      await sleep(INHALE);
+      setExpanded(true, ex.inhale);
+      await sleep(ex.inhale);
       if (stopped) break;
 
-      // Hold
-      haptic([15, 60, 15]);
-      setPhase('החזק');
-      await sleep(HOLD);
-      if (stopped) break;
+      // Hold 1 (after inhale)
+      if (ex.hold1 > 0) {
+        haptic([15, 60, 15]);
+        setPhase('החזק');
+        await sleep(ex.hold1);
+        if (stopped) break;
+      }
 
-      // Exhale — show grounding message 700ms in
+      // Exhale — grounding message fades in 700ms after exhale starts
       haptic(20);
       setPhase('נשיפה');
       showGrounding(i);
-      setExpanded(false, EXHALE);
-      await sleep(EXHALE);
+      setExpanded(false, ex.exhale);
+      await sleep(ex.exhale);
       if (stopped) break;
 
-      // Rest
+      // Hold 2 (after exhale — keep grounding visible)
+      if (ex.hold2 > 0) {
+        haptic([15, 60, 15]);
+        setPhase('החזק');
+        await sleep(ex.hold2);
+        if (stopped) break;
+      }
+
+      // Brief rest between cycles
       setPhase('');
       clearGrounding();
-      await sleep(HOLD);
+      if (i < totalBreaths - 1) await sleep(REST);
     }
 
     stopRing();
@@ -513,20 +628,30 @@
       isRunning = true;
       stopped   = false;
       actionBtn.textContent = 'עצור';
-      dursEl.classList.add('locked');
+      lockControls(true);
       runSession();
     }
   });
+
+  exerBtns.forEach(b => b.addEventListener('click', () => {
+    exerBtns.forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    exercise = EXERCISES[b.dataset.id];
+    exerDescEl.textContent = exercise.desc;
+    updateInfo();
+  }));
 
   durBtns.forEach(b => b.addEventListener('click', () => {
     durBtns.forEach(x => x.classList.remove('on'));
     b.classList.add('on');
     totalBreaths = parseInt(b.dataset.n, 10);
-    infoEl.textContent = `${totalBreaths} נשימות · ${b.dataset.lbl}`;
+    updateInfo();
   }));
 
   /* ── Init ── */
   ringEl.style.strokeDashoffset = C;
+  exerDescEl.textContent = exercise.desc;
+  updateInfo();
   startIdle();
 
   /* ── Service worker ── */

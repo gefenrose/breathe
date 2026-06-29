@@ -1,7 +1,7 @@
 {
-  "name": "Breathe",
-  "short_name": "Breathe",
-  "description": "A mindful breathing guide",
+  "name": "נשימה",
+  "short_name": "נשימה",
+  "description": "מדריך נשימה מודעת",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
